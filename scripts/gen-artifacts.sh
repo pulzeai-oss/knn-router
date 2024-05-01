@@ -49,7 +49,7 @@ go run ${ROOT_DIR}/main.go load --points-data-path ${POINTS_DATA_PATH} --scores-
 # Generate embeddings.snapshot
 TMPDIR=$(mktemp -d)
 echo ${TMPDIR}
-QDRANT_CNT=$(docker run -d -e QDRANT__STORAGE__SNAPSHOTS_PATH=/tmp/snapshots -it -p 6335:6333 --rm -u "$(id -u)" -v ${TMPDIR}:/tmp/snapshots ghcr.io/qdrant/qdrant/qdrant:v1.9.0-unprivileged ./qdrant)
+QDRANT_CNT=$(docker run -d -e QDRANT__STORAGE__STORAGE_PATH=/tmp/storage -e QDRANT__STORAGE__SNAPSHOTS_PATH=/tmp/snapshots -it -p 6335:6333 --rm -u "$(id -u)" -v ${TMPDIR}:/tmp/snapshots ghcr.io/qdrant/qdrant/qdrant:v1.9.0-unprivileged ./qdrant)
 
 # Wait for Qdrant
 timeout 1m bash -c 'until curl -s http://localhost:6335/readyz; do sleep 1; done'
@@ -65,8 +65,8 @@ curl --fail -X PUT http://localhost:6335/collections/main \
   }"
 
 # Batch upsert points
-jq -c '{id: .point_uid, vector: .embedding, payload: {}}' ${POINTS_DATA_PATH} | split -l 500 --filter="cat > ${TMPDIR}/points_\$FILE.jsonl"
-for f in ${TMPDIR}/points_*.jsonl; do
+jq -c '{id: .point_uid, vector: .embedding, payload: {}}' ${POINTS_DATA_PATH} | split -l 500 - ${TMPDIR}/points_part_
+for f in ${TMPDIR}/points_part_*; do
     jq -cs '{operations: [{upsert: {points: .}}]}' ${f} > ${f}.payload
     curl -X POST http://localhost:6335/collections/main/points/batch \
     -H 'Content-Type: application/json' \

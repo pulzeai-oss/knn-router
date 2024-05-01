@@ -1,5 +1,7 @@
 services:
   tei:
+    # No support for arm64 at this time
+    platform: linux/amd64
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2-grpc
     command:
       - --model-id=BAAI/bge-small-en-v1.5
@@ -8,6 +10,8 @@ services:
       - "8889"
     restart: on-failure
   qdrant:
+    # No support for arm64 at this time
+    platform: linux/amd64
     image: ghcr.io/qdrant/qdrant/qdrant:v1.9.0-unprivileged
     command:
       - ./qdrant
