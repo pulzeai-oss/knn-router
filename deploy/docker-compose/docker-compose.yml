@@ -2,13 +2,11 @@ services:
   tei:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2-grpc
     command:
-      - --model-id=/srv/run/embedding-model
+      - --model-id=BAAI/bge-small-en-v1.5
       - --port=8889
     ports:
       - "8889"
     restart: on-failure
-    volumes:
-      - /path/to/embedding-model:/srv/run/embedding-model
   qdrant:
     image: ghcr.io/qdrant/qdrant/qdrant:v1.9.0-unprivileged
     command:
@@ -18,7 +16,7 @@ services:
       - "6334"
     restart: on-failure
     volumes:
-      - /path/to/embeddings.snapshot:/srv/run/embeddings.snapshot
+      - ./embeddings.snapshot:/srv/run/embeddings.snapshot
   server:
     build:
       context: ../../
@@ -26,9 +24,9 @@ services:
       - server
       - --embed-address=tei:8889
       - --qdrant-address=qdrant:6334
-      - --scores-db-path=/srv/run/scores.db
+      - --db-path=/srv/run/scores.db
     ports:
       - "8888:8888"
     restart: on-failure
     volumes:
-      - /path/to/scores.db:/srv/run/scores.db
+      - ./scores.db:/srv/run/scores.db

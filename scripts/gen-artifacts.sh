@@ -40,13 +40,16 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+# Create the output directory
+mkdir -p ${OUTPUT_DIR}
+
 # Generate Bolt DB of targets/scores
 go run ${ROOT_DIR}/main.go load --points-data-path ${POINTS_DATA_PATH} --scores-data-path ${SCORES_DATA_PATH} --db-path ${OUTPUT_DIR}/scores.db
 
 # Generate embeddings.snapshot
 TMPDIR=$(mktemp -d)
 echo ${TMPDIR}
-QDRANT_CNT=$(docker compose --project-directory ${ROOT_DIR}/deploy/docker-compose run --detach --env QDRANT__STORAGE__SNAPSHOTS_PATH=/tmp/snapshots --interactive --publish 6335:6333 --rm --user "$(id -u)" --volume ${TMPDIR}:/tmp/snapshots qdrant ./qdrant)
+QDRANT_CNT=$(docker run -d -e QDRANT__STORAGE__SNAPSHOTS_PATH=/tmp/snapshots -it -p 6335:6333 --rm -u "$(id -u)" -v ${TMPDIR}:/tmp/snapshots ghcr.io/qdrant/qdrant/qdrant:v1.9.0-unprivileged ./qdrant)
 
 # Wait for Qdrant
 timeout 1m bash -c 'until curl -s http://localhost:6335/readyz; do sleep 1; done'
