@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package scores.v1;
+
+option go_package = "github.com/pulzeai-oss/knn-router/internal/scorespb;scorespb";
+
+message Score {
+    string target = 1;
+    float score = 2;
+}
+
+message Point {
+    string category = 1;
+    repeated Score scores = 2;
+}
