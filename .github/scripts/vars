@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -e
+
+cat << EOF > "${GITHUB_OUTPUT}"
+image=ghcr.io/${GITHUB_REPOSITORY_OWNER}/$(basename "${PWD}")
+version=$("$(dirname $0)"/version)
+EOF
