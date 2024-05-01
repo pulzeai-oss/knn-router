@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/pulzeai-oss/knn-router/cmd/generate"
+	"github.com/pulzeai-oss/knn-router/cmd/loader"
 	"github.com/pulzeai-oss/knn-router/cmd/server"
 	"github.com/spf13/cobra"
 )
@@ -13,7 +13,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(server.ServerCmd)
-	rootCmd.AddCommand(generate.GenerateCmd)
+	rootCmd.AddCommand(loader.LoaderCmd)
 }
 
 func Execute() error {

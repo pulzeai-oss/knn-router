@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"net/http"
 
@@ -31,7 +30,7 @@ const (
 )
 
 type Request struct {
-	Prompt           string           `json:"prompt"`
+	Query            string           `json:"query"`
 	TruncateStrategy TruncateStrategy `json:"truncate_strategy"`
 }
 
@@ -55,7 +54,7 @@ type Server struct {
 	embedClient       teipb.EmbedClient
 	tokenizeClient    teipb.TokenizeClient
 	pointsClient      qdrant.PointsClient
-	scoresDB          *bolt.DB
+	DB                *bolt.DB
 	topK              int
 	maxSequenceLength int
 }
@@ -63,7 +62,7 @@ type Server struct {
 func NewServer(
 	embedConn *grpc.ClientConn,
 	qdrantConn *grpc.ClientConn,
-	scoresDB *bolt.DB,
+	DB *bolt.DB,
 	topK int,
 	maxSequenceLength int,
 ) *Server {
@@ -71,7 +70,7 @@ func NewServer(
 		embedClient:       teipb.NewEmbedClient(embedConn),
 		tokenizeClient:    teipb.NewTokenizeClient(embedConn),
 		pointsClient:      qdrant.NewPointsClient(qdrantConn),
-		scoresDB:          scoresDB,
+		DB:                DB,
 		topK:              topK,
 		maxSequenceLength: maxSequenceLength,
 	}
@@ -81,7 +80,7 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	// TODO (jeev): Switch to GRPC server
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		http.Error(w, "failed to read request body", http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
@@ -90,56 +89,56 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	payload := Request{TruncateStrategy: Middle}
 	err = json.Unmarshal(body, &payload)
 	if err != nil {
-		http.Error(w, "Failed to parse request body", http.StatusBadRequest)
+		http.Error(w, "failed to parse request body", http.StatusBadRequest)
 		return
 	}
-	if payload.Prompt == "" {
-		http.Error(w, "Prompt is required", http.StatusBadRequest)
+	if payload.Query == "" {
+		http.Error(w, "query is required", http.StatusBadRequest)
 		return
 	}
 
 	res, err := s.query(r.Context(), &payload)
 	if err != nil {
-		http.Error(w, "Failed to retrieve scores", http.StatusInternalServerError)
+		http.Error(w, "failed to retrieve scores", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(res); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
 }
 
-func (s *Server) sanitizePrompt(
+func (s *Server) sanitizeQuery(
 	ctx context.Context,
 	req *Request,
 ) (string, error) {
-	encodeResp, err := s.tokenizeClient.Tokenize(ctx, &teipb.EncodeRequest{Inputs: req.Prompt})
+	encodeResp, err := s.tokenizeClient.Tokenize(ctx, &teipb.EncodeRequest{Inputs: req.Query})
 	if err != nil {
-		return "", fmt.Errorf("failed to tokenize prompt: %v", err)
+		return "", fmt.Errorf("failed to tokenize query: %v", err)
 	}
 	numTokens := len(encodeResp.GetTokens())
 	if numTokens <= s.maxSequenceLength {
-		return req.Prompt, nil
+		return req.Query, nil
 	}
 
 	switch req.TruncateStrategy {
 	case Head:
 		startToken := encodeResp.GetTokens()[numTokens-s.maxSequenceLength]
-		return req.Prompt[*startToken.Start:], nil
+		return req.Query[*startToken.Start:], nil
 	case Tail:
 		endToken := encodeResp.GetTokens()[s.maxSequenceLength-1]
-		return req.Prompt[:*endToken.Stop], nil
+		return req.Query[:*endToken.Stop], nil
 	case Middle:
 		offset := s.maxSequenceLength / 2
 		startTruncateToken := encodeResp.GetTokens()[offset]
 		endTruncateToken := encodeResp.GetTokens()[numTokens+offset-s.maxSequenceLength-1]
-		return req.Prompt[:*startTruncateToken.Start] + req.Prompt[*endTruncateToken.Stop:], nil
+		return req.Query[:*startTruncateToken.Start] + req.Query[*endTruncateToken.Stop:], nil
 	case Ends:
 		offset := (numTokens - s.maxSequenceLength) / 2
 		startToken := encodeResp.GetTokens()[offset]
 		endToken := encodeResp.GetTokens()[offset+s.maxSequenceLength-1]
-		return req.Prompt[*startToken.Start:*endToken.Stop], nil
+		return req.Query[*startToken.Start:*endToken.Stop], nil
 	}
 
 	return "", fmt.Errorf("unsupported truncate strategy: %v", req.TruncateStrategy)
@@ -149,15 +148,13 @@ func (s *Server) query(
 	ctx context.Context,
 	req *Request,
 ) (*Response, error) {
-	prompt, err := s.sanitizePrompt(ctx, req)
+	query, err := s.sanitizeQuery(ctx, req)
 	if err != nil {
-		log.Printf("Failed to sanitize prompt: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to sanitize query: %v", err)
 	}
-	embedResp, err := s.embedClient.Embed(ctx, &teipb.EmbedRequest{Inputs: prompt, Truncate: true})
+	embedResp, err := s.embedClient.Embed(ctx, &teipb.EmbedRequest{Inputs: query, Truncate: true})
 	if err != nil {
-		log.Printf("Failed to compute embedding: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to compute embedding: %v", err)
 	}
 
 	search, err := s.pointsClient.Search(ctx, &qdrant.SearchPoints{
@@ -172,8 +169,7 @@ func (s *Server) query(
 		},
 	})
 	if err != nil {
-		log.Printf("Failed to search for nearest neighbors: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to search for nearest neighbors: %v", err)
 	}
 
 	// Initialize response
@@ -186,12 +182,12 @@ func (s *Server) query(
 		uid := pt.GetId().GetUuid()
 		weight := pt.GetScore()
 		weightSum += weight
-		// Lookup scores in KV store for given UID
-		err = s.scoresDB.View(func(tx *bolt.Tx) error {
+		// Lookup target scores in DB for given UID
+		err = s.DB.View(func(tx *bolt.Tx) error {
 			b := tx.Bucket([]byte(PointsCollection))
 			v := b.Get([]byte(uid))
 			if v == nil {
-				return fmt.Errorf("could not find scores for nearest neighbor UID %s", uid)
+				return fmt.Errorf("could not find targets for nearest neighbor UID %s", uid)
 			}
 			var payload scorespb.Point
 			err = proto.Unmarshal(v, &payload)
@@ -212,8 +208,11 @@ func (s *Server) query(
 			return nil
 		})
 		if err != nil {
-			log.Printf("Failed to retrieve scores for nearest neighbor UID %s: %v", uid, err)
-			return nil, err
+			return nil, fmt.Errorf(
+				"failed to retrieve targets for nearest neighbor UID %s: %v",
+				uid,
+				err,
+			)
 		}
 	}
 	// Normalize the accumulated scores by dividing by the sum of weighted distances

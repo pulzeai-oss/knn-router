@@ -13,11 +13,11 @@ import (
 )
 
 type serverOpts struct {
-	bindAddr     string
-	embedAddr    string
-	qdrantAddr   string
-	scoresDBPath string
-	topK         int
+	bindAddr   string
+	embedAddr  string
+	qdrantAddr string
+	DBPath     string
+	topK       int
 }
 
 var opts serverOpts
@@ -26,11 +26,11 @@ var ServerCmd = &cobra.Command{
 	Use:   "server",
 	Short: "Start the KNN-router server",
 	Run: func(cmd *cobra.Command, args []string) {
-		scoresDB, err := bolt.Open(opts.scoresDBPath, 0600, &bolt.Options{ReadOnly: true})
+		DB, err := bolt.Open(opts.DBPath, 0600, &bolt.Options{ReadOnly: true})
 		if err != nil {
-			log.Fatalf("Failed to open scores database: %v", err)
+			log.Fatalf("failed to open scores database: %v", err)
 		}
-		defer scoresDB.Close()
+		defer DB.Close()
 
 		embedConn, err := grpc.DialContext(
 			context.Background(),
@@ -38,14 +38,14 @@ var ServerCmd = &cobra.Command{
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		if err != nil {
-			log.Fatalf("Failed to create connection to embedding server: %v", err)
+			log.Fatalf("failed to create connection to embedding server: %v", err)
 		}
 		defer embedConn.Close()
 
 		infoClient := teipb.NewInfoClient(embedConn)
 		infoResp, err := infoClient.Info(context.Background(), &teipb.InfoRequest{})
 		if err != nil {
-			log.Fatalf("Failed to get info from embedding server: %v", err)
+			log.Fatalf("failed to get info from embedding server: %v", err)
 		}
 
 		qdrantConn, err := grpc.DialContext(
@@ -54,19 +54,19 @@ var ServerCmd = &cobra.Command{
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		if err != nil {
-			log.Fatalf("Failed to create connection to Qdrant server: %v", err)
+			log.Fatalf("failed to create connection to Qdrant server: %v", err)
 		}
 		defer qdrantConn.Close()
 
 		svr := server.NewServer(
 			embedConn,
 			qdrantConn,
-			scoresDB,
+			DB,
 			opts.topK,
 			int(infoResp.MaxInputLength),
 		)
 		if err := svr.ListenAndServe(opts.bindAddr); err != nil {
-			log.Fatalf("Failed to start server: %v", err)
+			log.Fatalf("failed to start server: %v", err)
 		}
 	},
 }
@@ -79,7 +79,7 @@ func init() {
 	ServerCmd.Flags().
 		StringVarP(&opts.qdrantAddr, "qdrant-address", "q", "localhost:6334", "Address and port of the Qdrant server")
 	ServerCmd.Flags().
-		StringVarP(&opts.scoresDBPath, "scores-db-path", "s", "scores.db", "The path to the scores database file")
+		StringVarP(&opts.DBPath, "db-path", "s", "scores.db", "The path to the Bolt database")
 	ServerCmd.Flags().
 		IntVarP(&opts.topK, "top-k", "k", 10, "The number of top hits to aggregate")
 }
