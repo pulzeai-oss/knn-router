@@ -69,8 +69,8 @@ jq -c '{id: .point_uid, vector: .embedding, payload: {}}' ${POINTS_DATA_PATH} | 
 for f in ${TMPDIR}/points_part_*; do
     jq -cs '{operations: [{upsert: {points: .}}]}' ${f} > ${f}.payload
     curl -X POST http://localhost:6335/collections/main/points/batch \
-    -H 'Content-Type: application/json' \
-    --data-binary "@${f}.payload"
+      -H 'Content-Type: application/json' \
+      --data-binary "@${f}.payload"
 done
 
 # Save snapshot

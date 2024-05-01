@@ -1,8 +1,10 @@
 # KNN Router
 
 A minimal server for generating a ranked (weighted average) list of targets, for a query, based on its k-nearest semantic neighbors. Written in Go.
-Route natural language queries to the right system (i.e. agents, LORA adapters, LLMs, etc.), with minimal latency. At [Pulze.ai](https://www.pulze.ai),
-KNN-router dynamically selects the best LLM for user requests.
+Route natural language queries to the right system (i.e. agents, LORA adapters, LLMs, etc.), with minimal latency. At [Pulze.ai](https://platform.pulze.ai),
+KNN-router dynamically selects the best LLM for user requests:
+
+![Pulze Smart Router](./docs/pulze-smart-router.png)
 
 Works with:
 
