@@ -2,7 +2,7 @@
 
 A minimal server for generating a ranked list of targets, for a query, based on its k-nearest semantic neighbors. Written in Go.
 
-KNN-Router can be used within a larger system to route natural language queries to the right system, with minimal latency. Given a user query, KNN-Router:
+KNN-router can be used within a larger system to route natural language queries to the right system, with minimal latency. Given a user query, KNN-router:
 
 1. Looks up the most semantically similar neighbors from a curated corpus of example utterances
 2. Computes a weighted average score (based on the distances between query and top-K example utterances) for each target associated with the respective utterances. Targets can be information retrieval systems, agents, LORA adapters, Small/Large Language Models, or others. The sky is the limit!
