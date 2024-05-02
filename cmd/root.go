@@ -8,7 +8,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "knn-router [subcommand]",
-	Short: "The CLI for KNN-Router",
+	Short: "The CLI for KNN-router",
 }
 
 func init() {
