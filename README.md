@@ -8,7 +8,7 @@ KNN-router can be used within a larger system to route natural language queries 
 2. Computes a weighted average score (based on the distances between query and top-K example utterances) for each target associated with the respective utterances. Targets can be information retrieval systems, agents, LORA adapters, Small/Large Language Models, or others. The sky is the limit!
 3. Returns a ranked list of targets that are most suitable for satisfying the query
 
-At [Pulze.ai](https://platform.pulze.ai), KNN-router dynamically selects the best LLM for user requests:
+At [Pulze.ai](https://platform.pulze.ai), we use KNN-router to select the best LLM for user requests. Try it out locally [here](./deploy/pulze-intent-v0.1/).
 ![Pulze Smart Router](./docs/pulze-smart-router.png)
 
 Works with:

@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-router
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/component: llm-router
+      kubernetes.io/name: llm-router
+  template:
+    metadata:
+      labels:
+        kubernetes.io/component: llm-router
+        kubernetes.io/name: llm-router
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-accelerator
+                operator: In
+                values:
+                - nvidia-l4
+      initContainers:
+      - name: download-model
+        image: pkgxdev/pkgx:v1
+        args:
+        - pkgx
+        - huggingface-cli
+        - download
+        - --local-dir=/srv/run
+        - --local-dir-use-symlinks=False
+        - pulze/intent-v0.1
+        volumeMounts:
+        - mountPath: /srv/run
+          name: run
+      containers:
+      - name: main
+        image: ghcr.io/pulzeai-oss/knn-router:20240503.1_8e42ba6
+        args:
+        - server
+        - --db-path=/srv/run/scores.db
+        livenessProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: http
+          timeoutSeconds: 1
+        ports:
+        - containerPort: 8888
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: http
+          timeoutSeconds: 1
+        resources:
+          limits:
+            memory: 2Gi
+          requests:
+            cpu: "1"
+        volumeMounts:
+        - mountPath: /srv/run
+          name: run
+      - name: tei
+        image: ghcr.io/huggingface/text-embeddings-inference:89-1.2-grpc
+        args:
+        - --model-id=/srv/run/embedding-model
+        - --port=8889
+        livenessProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: grpc
+          timeoutSeconds: 1
+        ports:
+        - containerPort: 8889
+          name: grpc
+          protocol: TCP
+        resources:
+          limits:
+            memory: 4Gi
+            nvidia.com/gpu: "1"
+          requests:
+            cpu: "1"
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /srv/run
+          name: run
+      - name: qdrant
+        image: qdrant/qdrant:v1.9.0
+        args:
+        - ./qdrant
+        - --snapshot=/srv/run/embeddings.snapshot:main
+        livenessProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: grpc
+          timeoutSeconds: 1
+        name: qdrant
+        ports:
+        - containerPort: 6334
+          name: grpc
+          protocol: TCP
+        resources:
+          limits:
+            memory: 6Gi
+          requests:
+            cpu: "1"
+        volumeMounts:
+        - mountPath: /qdrant/storage
+          name: qdrant
+        - mountPath: /srv/run
+          name: run
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: dshm
+      - emptyDir: {}
+        name: qdrant
+      - emptyDir: {}
+        name: run
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-router
+spec:
+  ports:
+  - name: http
+    port: 8888
+    protocol: TCP
+    targetPort: 8888
+  selector:
+    kubernetes.io/component: llm-router
+    kubernetes.io/name: llm-router
+  type: ClusterIP
