@@ -4,16 +4,19 @@ As part of this quickstart, we present a dummy example that selects the most app
 The example utterances are defined in [`./data/points.jsonl`](./data/points.jsonl), and the target agents and their corresponding score for each utterance are defined in [`./data/targets.jsonl`](./data/targets.jsonl).
 
 Generate deployment artifacts:
+
 ```bash
 ../../scripts/gen-artifacts.sh --points-data-path data/points.jsonl --scores-data-path data/targets.jsonl --output-dir .
 ```
 
 Start the services:
+
 ```bash
 docker compose up -d --build
 ```
 
 Get target scores for query:
+
 ```bash
 curl -s 127.0.0.1:8888/ \
     -X POST \
@@ -22,6 +25,7 @@ curl -s 127.0.0.1:8888/ \
 ```
 
 Output:
+
 ```
 {
   "hits": [

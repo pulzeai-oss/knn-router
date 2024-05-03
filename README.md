@@ -36,6 +36,7 @@ The following artifacts are required for deployment:
 - `scores.db`: Bolt DB containing the targets and their respective scores for each point
 
 Use this [script](./scripts/gen-artifacts.sh) to generate these artifacts:
+
 ```bash
 scripts/gen-artifacts.sh --points-data-path points.jsonl --scores-data-path targets.jsonl --output-dir ./dist
 ```
