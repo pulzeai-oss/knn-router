@@ -3,6 +3,8 @@
 As part of this quickstart, we present a dummy example that selects the most appropriate agent (i.e. `chitchat-agent` or `politics-agent`) for chit-chat and political queries respectively.
 The example utterances are defined in [`./data/points.jsonl`](./data/points.jsonl), and the target agents and their corresponding score for each utterance are defined in [`./data/targets.jsonl`](./data/targets.jsonl).
 
+## Usage
+
 Generate deployment artifacts:
 
 ```bash
