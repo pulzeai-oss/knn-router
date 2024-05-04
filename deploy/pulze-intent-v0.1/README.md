@@ -142,7 +142,6 @@ Output:
 
 See this [example](./k8s.yaml).
 
-
 ## Models
 
 - claude-3-haiku-20240307
@@ -162,9 +161,11 @@ See this [example](./k8s.yaml).
 ## Data
 
 ### Prompts and Intent Categories
+
 Prompt and intent categories are derived from the [GAIR-NLP/Auto-J scenario classification dataset](https://github.com/GAIR-NLP/auto-j/blob/2ae17a3965d933232e9cd50302aa0f176249c83b/README.md?plain=1#L582).
 
 Citation:
+
 ```
 @article{li2023generative,
   title={Generative Judge for Evaluating Alignment},
@@ -206,7 +207,7 @@ If both answers are equally bad, use "0".
 </response2>
 ```
 
-Each pair of models is subject to 2 matches, with the positions of the respective responses swapped in the evaluation prompt. A model is considered a winner only if 
+Each pair of models is subject to 2 matches, with the positions of the respective responses swapped in the evaluation prompt. A model is considered a winner only if
 it wins both matches.
 
 For each prompt, we then compute Bradley-Terry scores for the respective models using the same [method](https://github.com/lm-sys/FastChat/blob/f2e6ca964af7ad0585cadcf16ab98e57297e2133/fastchat/serve/monitor/elo_analysis.py#L57) as that used in the [LMSYS Chatbot Arena Leaderboard](https://chat.lmsys.org/?leaderboard). Finally, we normalize all scores to a scale from 0 to 1 for interoperability with other weighted ranking systems.
